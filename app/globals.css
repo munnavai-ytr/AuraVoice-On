@@ -133,28 +133,20 @@ html, body {
   background-color: #F1F5F9 !important;
   color: #0F172A !important;
 }
-
 [data-theme="light"] .bg-\[\#0D1117\],
 [data-theme="light"] .bg-\[\#111827\],
 [data-theme="light"] .bg-\[\#0A0F1A\] {
   background-color: #FFFFFF !important;
 }
-
-[data-theme="light"] .bg-\[\#1A2235\],
-[data-theme="light"] .bg-\[\#131C2E\] {
+[data-theme="light"] .bg-\[\#1A2235\] {
   background-color: #F8FAFC !important;
 }
-
-[data-theme="light"] .text-\[\#F0F4FF\],
-[data-theme="light"] .text-\[\#E2E8F0\] {
+[data-theme="light"] .text-\[\#F0F4FF\] {
   color: #0F172A !important;
 }
-
-[data-theme="light"] .text-\[\#8899B4\],
-[data-theme="light"] .text-\[\#4B6080\] {
+[data-theme="light"] .text-\[\#8899B4\] {
   color: #64748B !important;
 }
-
 [data-theme="light"] .border-\[\#1E293B\] {
   border-color: #E2E8F0 !important;
 }

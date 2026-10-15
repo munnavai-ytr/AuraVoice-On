@@ -3,11 +3,11 @@ import type { User } from '@supabase/supabase-js';
 import type { Profile } from '@/types';
 
 interface AppState {
-  theme: 'dark' | 'light';
+  theme: 'dark' | 'light' | 'system';
   user: User | null;
   profile: Profile | null;
   isLoading: boolean;
-  setTheme: (theme: 'dark' | 'light') => void;
+  setTheme: (theme: 'dark' | 'light' | 'system') => void;
   setUser: (user: User | null) => void;
   setProfile: (profile: Profile | null) => void;
   setIsLoading: (isLoading: boolean) => void;
@@ -25,7 +25,7 @@ export const useAppStore = create<AppState>((set) => ({
       localStorage.setItem('vocalis_theme', theme);
       if (theme === 'light') {
         document.documentElement.setAttribute('data-theme', 'light');
-      } else {
+      } else if (theme === 'dark') {
         document.documentElement.removeAttribute('data-theme');
       }
     }

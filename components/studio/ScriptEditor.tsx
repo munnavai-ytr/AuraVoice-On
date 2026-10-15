@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Sparkles, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ScriptEditorProps {
@@ -10,6 +10,9 @@ interface ScriptEditorProps {
   maxLength: number;
   textareaRef: React.RefObject<HTMLTextAreaElement | null>;
   className?: string;
+  onEnhance?: () => void;
+  isEnhancing?: boolean;
+  category?: string;
 }
 
 export function ScriptEditor({
@@ -18,6 +21,9 @@ export function ScriptEditor({
   maxLength,
   textareaRef,
   className,
+  onEnhance,
+  isEnhancing,
+  category,
 }: ScriptEditorProps) {
   const charCount = script.length;
   const ratio = maxLength > 0 ? charCount / maxLength : 0;
@@ -40,6 +46,29 @@ export function ScriptEditor({
 
   return (
     <div className={cn('flex flex-col flex-1 w-full min-h-[220px] sm:min-h-[300px]', className)}>
+      {onEnhance && (
+        <div className="flex justify-end mb-2">
+          <button
+            type="button"
+            onClick={onEnhance}
+            disabled={isEnhancing || !script.trim()}
+            className="inline-flex items-center gap-1.5 h-[30px] px-3 rounded-lg bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white text-xs font-semibold shadow-md shadow-indigo-500/25 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer select-none"
+          >
+            {isEnhancing ? (
+              <>
+                <Loader2 className="w-3 h-3 animate-spin" />
+                <span>Enhancing...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-3 h-3" />
+                <span>✨ AI Enhance</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* Script Textarea */}
       <textarea
         ref={textareaRef}

@@ -47,6 +47,8 @@ export default function StudioPage() {
     audioDuration,
     genError,
     generateAudio,
+    enhanceScript,
+    isEnhancing,
     resetSettings,
   } = useStudio();
 
@@ -111,6 +113,9 @@ export default function StudioPage() {
               onChange={setScript}
               maxLength={maxScriptLength}
               textareaRef={textareaRef}
+              onEnhance={enhanceScript}
+              isEnhancing={isEnhancing}
+              category={category}
             />
           </div>
         </div>

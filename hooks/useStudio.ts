@@ -12,6 +12,7 @@ export function useStudio() {
   const [script, setScript] = useState('');
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   // ── VOICE STATE (derived with override) ──
   const [voiceOverride, setVoiceOverride] = useState<{ id: string; name: string } | null>(null);
@@ -249,6 +250,27 @@ export function useStudio() {
     user,
   ]);
 
+  const enhanceScript = useCallback(async () => {
+    if (!script.trim() || isEnhancing) return;
+    setIsEnhancing(true);
+    try {
+      const res = await fetch('/api/enhance-script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ script, category, tone: 'engaging' }),
+      });
+      if (!res.ok) throw new Error('Enhancement failed');
+      const data = await res.json() as { enhanced?: string; error?: string };
+      if (data.enhanced) {
+        setScript(data.enhanced);
+      }
+    } catch {
+      // fail silently, keep original script
+    } finally {
+      setIsEnhancing(false);
+    }
+  }, [script, category, isEnhancing]);
+
   const resetSettings = useCallback(() => {
     setStability(0.35);
     setSimilarity(0.75);
@@ -285,6 +307,8 @@ export function useStudio() {
     audioDuration,
     genError,
     generateAudio,
+    enhanceScript,
+    isEnhancing,
     resetSettings,
   };
 }

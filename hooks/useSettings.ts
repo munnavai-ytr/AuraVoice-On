@@ -21,7 +21,16 @@ export function useSettings() {
 
   // Profile Form State
   const [fullName, setFullName] = useState(profile?.full_name || '');
-  const [displayName, setDisplayName] = useState('');
+  const [displayName, setDisplayName] = useState(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem('vocalis_display_name') || '';
+      } catch {
+        return '';
+      }
+    }
+    return '';
+  });
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
@@ -171,31 +180,56 @@ export function useSettings() {
         const compressedBlob = await compressImage(file);
         const supabase = createClient();
         const fileName = `${user.id}-${Date.now()}.jpg`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, compressedBlob, {
-            contentType: 'image/jpeg',
-            upsert: true,
-          });
-
         let publicUrl = '';
-        if (!uploadError) {
-          const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-          publicUrl = data.publicUrl;
-        } else {
-          // If storage bucket isn't set up, create local object URL for preview
+
+        // Try Supabase Storage first
+        try {
+          const { error: uploadError } = await supabase.storage
+            .from('avatars')
+            .upload(fileName, compressedBlob, {
+              contentType: 'image/jpeg',
+              upsert: true,
+            });
+
+          if (!uploadError) {
+            const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
+            publicUrl = data.publicUrl;
+          }
+        } catch {
+          // Storage bucket might not exist
+        }
+
+        // Fallback: use object URL for immediate preview
+        if (!publicUrl) {
           publicUrl = URL.createObjectURL(compressedBlob);
         }
 
-        // Update profile in DB
-        await supabase
+        // Always update profile in DB with whatever URL we got
+        const { error: dbError } = await supabase
           .from('profiles')
-          .update({ avatar_url: publicUrl })
-          .eq('id', user.id);
+          .upsert(
+            { id: user.id, avatar_url: publicUrl },
+            { onConflict: 'id' }
+          );
 
+        if (dbError) {
+          console.warn('Profile avatar update notice:', dbError.message);
+        }
+
+        // Always update local store regardless of DB result
         if (profile) {
           setProfile({ ...profile, avatar_url: publicUrl });
+        } else {
+          setProfile({
+            id: user.id,
+            full_name: fullName || null,
+            email: user.email || null,
+            avatar_url: publicUrl,
+            user_voice_id: null,
+            custom_api_key: null,
+            onboarding_complete: true,
+            created_at: new Date().toISOString(),
+          });
         }
 
         showToast('Avatar updated ✓', 'success');
@@ -206,7 +240,7 @@ export function useSettings() {
         setIsUploadingAvatar(false);
       }
     },
-    [user?.id, profile, setProfile, showToast]
+    [user?.id, user?.email, fullName, profile, setProfile, showToast]
   );
 
   // Save profile name
@@ -218,13 +252,35 @@ export function useSettings() {
       const supabase = createClient();
       const { error } = await supabase
         .from('profiles')
-        .update({ full_name: fullName.trim() })
-        .eq('id', user.id);
+        .upsert(
+          {
+            id: user.id,
+            full_name: fullName.trim(),
+          },
+          { onConflict: 'id' }
+        );
 
       if (error) throw error;
 
       if (profile) {
         setProfile({ ...profile, full_name: fullName.trim() });
+      } else {
+        setProfile({
+          id: user.id,
+          full_name: fullName.trim() || null,
+          email: user.email || null,
+          avatar_url: null,
+          user_voice_id: null,
+          custom_api_key: null,
+          onboarding_complete: true,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      if (typeof window !== 'undefined' && displayName) {
+        try {
+          localStorage.setItem('vocalis_display_name', displayName.trim());
+        } catch {}
       }
 
       showToast('Profile updated ✓', 'success');
@@ -234,7 +290,7 @@ export function useSettings() {
     } finally {
       setIsSavingProfile(false);
     }
-  }, [user, fullName, profile, setProfile, showToast]);
+  }, [user, fullName, displayName, profile, setProfile, showToast]);
 
   // Test API key
   const testApiKey = useCallback(async (key: string) => {
@@ -433,35 +489,24 @@ export function useSettings() {
         localStorage.setItem('vocalis_theme_mode', mode);
       } catch {}
 
-      const applyDark = () => {
-        document.documentElement.removeAttribute('data-theme');
-        document.documentElement.classList.add('dark');
-        document.documentElement.style.colorScheme = 'dark';
-      };
-
-      const applyLight = () => {
+      if (mode === 'light') {
         document.documentElement.setAttribute('data-theme', 'light');
         document.documentElement.classList.remove('dark');
-        document.documentElement.style.colorScheme = 'light';
-        // Override dark hardcoded backgrounds for light mode
-        document.documentElement.style.setProperty('--bg-page', '#F1F5F9');
-        document.documentElement.style.setProperty('--bg-card', '#FFFFFF');
-        document.documentElement.style.setProperty('--text-primary', '#0F172A');
-        document.documentElement.style.setProperty('--text-muted', '#64748B');
-        document.documentElement.style.setProperty('--border', '#E2E8F0');
-      };
-
-      if (mode === 'light') {
-        applyLight();
-        setStoreTheme('light');
       } else if (mode === 'dark') {
-        applyDark();
-        setStoreTheme('dark');
+        document.documentElement.removeAttribute('data-theme');
+        document.documentElement.classList.add('dark');
       } else {
         const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-        isDark ? applyDark() : applyLight();
-        setStoreTheme(isDark ? 'dark' : 'light');
+        if (isDark) {
+          document.documentElement.removeAttribute('data-theme');
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.documentElement.classList.remove('dark');
+        }
       }
+
+      setStoreTheme(mode);
     },
     [setStoreTheme]
   );
